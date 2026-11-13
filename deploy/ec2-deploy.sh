@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Executed over SSH by CI. Requires Docker and passwordless sudo on EC2.
+set -euo pipefail
+revision="${1:?Missing commit SHA}"
+[[ "$revision" =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid commit SHA'; exit 1; }
+command -v docker >/dev/null || { echo 'Install and start Docker on EC2 first; see deploy/README.md'; exit 1; }
+sudo -n docker info >/dev/null
+
+release="$HOME/mental-health/releases/$revision"
+mkdir -p "$release"
+tar -xzf "$HOME/mental-health-$revision.tar.gz" -C "$release"
+cd "$release"
+sudo -n docker build --tag "mental-health:$revision" .
+
+name=mental-health
+backup=mental-health-previous
+if sudo -n docker container inspect "$backup" >/dev/null 2>&1; then
+  echo 'An earlier rollback container exists. Inspect mental-health-previous before retrying.'
+  exit 1
+fi
+had_previous=false
+if sudo -n docker container inspect "$name" >/dev/null 2>&1; then
+  sudo -n docker stop "$name"
+  sudo -n docker rename "$name" "$backup"
+  had_previous=true
+fi
+rollback() {
+  echo 'Deployment failed; restoring previous container when available.'
+  sudo -n docker logs --tail 60 "$name" || true
+  sudo -n docker rm -f "$name" || true
+  if "$had_previous"; then
+    sudo -n docker rename "$backup" "$name"
+    sudo -n docker start "$name"
+  fi
+}
+trap rollback ERR
+sudo -n docker run --detach --name "$name" --restart unless-stopped \
+  --publish 80:8000 --log-opt max-size=10m --log-opt max-file=3 "mental-health:$revision"
+healthy=false
+for attempt in $(seq 1 30); do
+  if sudo -n docker exec "$name" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)" >/dev/null 2>&1; then
+    healthy=true
+    break
+  fi
+  sleep 2
+done
+"$healthy" || { echo 'Application health check failed'; false; }
+# Verify the published port serves the frontend, not just the internal API.
+curl --fail --silent --show-error http://127.0.0.1/ > /dev/null
+trap - ERR
+if "$had_previous"; then sudo -n docker rm "$backup"; fi
+rm -f "$HOME/mental-health-$revision.tar.gz"
+echo "Successfully deployed $revision on port 80"

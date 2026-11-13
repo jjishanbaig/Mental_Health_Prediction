@@ -1,4 +1,4 @@
-﻿# Mental Health Prediction System
+# Mental Health Prediction System
 
 A local educational classification project with a FastAPI interface, model comparison, held-out evaluation, and downloadable PDF reports.
 
@@ -56,9 +56,9 @@ Run on localhost with demo responses. Public deployment would require deployment
 
 `backend/test_application.py` uses the standard library to start a local test server and exercise page/static loading, valid prediction, invalid input, actual missing-value imputation, PDF download without disk storage, removed report URLs, metrics consistency, and dataset endpoints. No additional test dependency is needed.
 
-### GitHub Actions
+### GitHub Actions CI/CD
 
-`.github/workflows/ci.yml` runs on pushes and pull requests to `main`, and can also be started manually from the Actions tab. It uses Python 3.14 on Ubuntu and Windows, caches pip downloads, installs `backend/requirements.txt`, checks dependency compatibility and Python syntax, and runs the integration tests against the committed model. Tests serve the files in `frontend/` through FastAPI. Full model training is run separately with `python backend/train_model.py`.
+`.github/workflows/ci.yml` runs on pushes and pull requests to `main`, and can also be started manually from the Actions tab. It uses Python 3.14 on Ubuntu and Windows, caches pip downloads, installs `backend/requirements.txt`, checks dependency compatibility and Python syntax, and runs the integration tests against the committed model. Tests serve the files in `frontend/` through FastAPI. Full model training is run separately with `python backend/train_model.py`. After both test jobs pass on `main`, a deployment job uploads the tested commit to EC2 using the SSH secrets and starts a persistent Docker container on HTTP port 80. See [EC2 deployment setup](deploy/README.md) for required server preparation, security-group rules, and troubleshooting.
 
 ## Project layout
 
