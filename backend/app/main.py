@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from uuid import uuid4
 from io import BytesIO
 from fastapi.responses import Response
@@ -24,17 +24,18 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parent.parent
+FRONTEND = ROOT.parent / "frontend"
 DATA_PATH = ROOT / "data" / "Mental Health Dataset.csv"
 MODEL_PATH = ROOT / "models" / "mental_health_model.joblib"
 environment_path = ROOT / "models" / "environment.json"
 if not MODEL_PATH.exists() or not environment_path.exists():
-    raise RuntimeError("Model missing. Run python train_model.py first.")
+    raise RuntimeError("Model missing. Run python backend/train_model.py first.")
 environment = json.loads(environment_path.read_text(encoding="utf-8"))
 if environment.get("scikit-learn") != sklearn.__version__:
-    raise RuntimeError("Model version mismatch. Install requirements.txt or retrain the model.")
+    raise RuntimeError("Model version mismatch. Install backend/requirements.txt or retrain the model.")
 artifact = joblib.load(MODEL_PATH)
 if artifact.get("versions", {}).get("scikit-learn") != sklearn.__version__:
-    raise RuntimeError("Model version mismatch. Run python train_model.py in this environment.")
+    raise RuntimeError("Model version mismatch. Run python backend/train_model.py in this environment.")
 model = artifact["pipeline"]
 FEATURES = artifact["features"]
 METRICS = artifact["metrics"]
@@ -42,8 +43,8 @@ data = pd.read_csv(DATA_PATH)
 
 app = FastAPI(title="Mental Health Prediction System", version="2.0.0",
               description="Educational ML demonstration for survey response patterns.")
-app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+app.mount("/static", StaticFiles(directory=str(FRONTEND / "static")), name="static")
+templates = Jinja2Templates(directory=str(FRONTEND))
 
 class PredictionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -181,3 +182,4 @@ async def privacy_headers(request, call_next):
 @app.get("/health")
 def health():
     return {"status": "ok", "model_loaded": True}
+

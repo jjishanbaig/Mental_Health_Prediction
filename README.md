@@ -13,22 +13,22 @@ Tested with Python 3.14. Use the same environment for training and serving.
 ```powershell
 py -3.14 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+python -m pip install -r backend/requirements.txt
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Open http://127.0.0.1:8000 (API documentation: `/docs`). A trained artifact is included. If dependencies or data change, retrain before serving:
 
 ```powershell
-python train_model.py
-python -m unittest test_application -v
+python backend/train_model.py
+python -m unittest backend.test_application -v
 ```
 
 ## Classification experiment
 
 - Strip surrounding whitespace and normalize blank cells to missing values.
 - Remove exact duplicate source records and exclude missing/invalid target labels.
-- Use the 11 survey fields listed in `train_model.py`. Exclude timestamp, country, gender, interview, and care-options fields from predictors.
+- Use the 11 survey fields listed in `backend/train_model.py`. Exclude timestamp, country, gender, interview, and care-options fields from predictors.
 - Reserve approximately 20% of records using a stratified grouped split. All records with a shared timestamp stay together. Timestamps may identify repeated source survey records, but are only a proxy; verified respondent IDs are unavailable. This prevents timestamp overlap, not every possible source of leakage. Identical categorical feature combinations can legitimately occur across groups.
 - Compare a prior baseline, logistic regression, Bernoulli naive Bayes, random forest, and extra trees using three-fold grouped cross-validation on training data only. All imputation and encoding are fitted within each fold.
 - Tree ensembles use 60 trees, depth at most 10, and a 10% bootstrap sample per tree to bound training cost on the repeated survey data.
@@ -39,7 +39,7 @@ This is a bounded comparison of fixed configurations, not an exhaustive algorith
 
 ## Saved outputs
 
-`models/mental_health_model.joblib` contains the pipeline, schema, category options, metrics, and package versions. `models/model_metrics.json` contains the same metrics. `models/environment.json` records numerical-library versions. Training updates all three. Requirements pin the tested runtime; serving rejects a scikit-learn mismatch before loading the artifact. Load only trusted Joblib files.
+`backend/models/mental_health_model.joblib` contains the pipeline, schema, category options, metrics, and package versions. `backend/models/model_metrics.json` contains the same metrics. `backend/models/environment.json` records numerical-library versions. Training updates all three. Requirements pin the tested runtime; serving rejects a scikit-learn mismatch before loading the artifact. Load only trusted Joblib files.
 
 ## API and data handling
 
@@ -48,10 +48,32 @@ This is a bounded comparison of fixed configurations, not an exhaustive algorith
 - `POST /api/predict` accepts exactly the 11 required category strings and returns class scores.
 - `POST /api/report` accepts the same inputs and streams a generated PDF. There are no report identifiers or report-download routes.
 
-Unknown categories, empty answers, non-string values, missing fields, and extra fields are rejected with HTTP 422. Choose `Not specified` to use the training-fitted most-frequent imputation. Reports are generated in memory only when requested and responses use `Cache-Control: no-store`. The application does not save submitted survey answers. Any PDFs left in `reports/` from the previous version remain local legacy files and are no longer served.
+Unknown categories, empty answers, non-string values, missing fields, and extra fields are rejected with HTTP 422. Choose `Not specified` to use the training-fitted most-frequent imputation. Reports are generated in memory only when requested and responses use `Cache-Control: no-store`. The application does not save submitted survey answers. Any PDFs left in `backend/reports/` from the previous version remain local legacy files and are no longer served.
 
 Run on localhost with demo responses. Public deployment would require deployment-specific authentication, TLS, request limits, and operational review. Frontend form, statistics, and preview load independently; dataset cells use text rendering. Changing a form response invalidates the displayed result.
 
 ## Checks
 
-`test_application.py` uses the standard library to start a local test server and exercise page/static loading, valid prediction, invalid input, actual missing-value imputation, PDF download without disk storage, removed report URLs, metrics consistency, and dataset endpoints. No additional test dependency is needed.
+`backend/test_application.py` uses the standard library to start a local test server and exercise page/static loading, valid prediction, invalid input, actual missing-value imputation, PDF download without disk storage, removed report URLs, metrics consistency, and dataset endpoints. No additional test dependency is needed.
+
+### GitHub Actions
+
+`.github/workflows/ci.yml` runs on pushes and pull requests to `main`, and can also be started manually from the Actions tab. It uses Python 3.14 on Ubuntu and Windows, caches pip downloads, installs `backend/requirements.txt`, checks dependency compatibility and Python syntax, and runs the integration tests against the committed model. Tests serve the files in `frontend/` through FastAPI. Full model training is run separately with `python backend/train_model.py`.
+
+## Project layout
+
+Run the commands above from the project root. FastAPI serves the frontend and API together at http://127.0.0.1:8000; no separate frontend server or build step is needed.
+
+```text
+backend/
+  app/main.py             # FastAPI routes and PDF generation
+  train_model.py          # Classification training workflow
+  requirements.txt        # Python dependencies
+  test_application.py     # Integration tests
+  data/                   # Source dataset
+  models/                 # Trained pipeline and evaluation
+frontend/
+  index.html              # Web interface
+  static/app.js           # Form, API requests, and dashboard
+  static/style.css        # Interface styles
+```

@@ -1,4 +1,4 @@
-﻿"""Grouped classification training; run python train_model.py explicitly."""
+﻿"""Grouped classification training; run python backend/train_model.py from the project root."""
 from pathlib import Path
 import json
 from datetime import datetime, timezone
@@ -84,4 +84,5 @@ def train():
 
 if __name__ == '__main__':
     train()
+
 

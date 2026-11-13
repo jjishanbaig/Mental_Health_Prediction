@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent
 class ApplicationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '18765'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cls.server = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'backend.app.main:app', '--host', '127.0.0.1', '--port', '18765'], cwd=ROOT.parent, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(100):
             try:
                 with urlopen('http://127.0.0.1:18765/health', timeout=1):
@@ -68,7 +68,7 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(self.call('/api/predict',{})[0],422)
 
     def test_missing_imputation(self):
-        import app.main as main
+        import backend.app.main as main
         payload = main.PredictionInput(**{k:'Not specified' for k in self.payload})
         output=main.infer(payload)
         frame=pd.DataFrame([{k:np.nan for k in main.FEATURES}],columns=main.FEATURES)
@@ -87,7 +87,7 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(self.call('/reports/bf2f030a66b4')[0],404)
 
     def test_metrics_consistency(self):
-        import app.main as main
+        import backend.app.main as main
         metrics=json.loads((ROOT/'models/model_metrics.json').read_text())
         self.assertEqual(metrics,main.METRICS)
         self.assertEqual(metrics['group_overlap'],0)
@@ -102,3 +102,4 @@ class ApplicationTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
