@@ -1,0 +1,111 @@
+{
+  "accuracy": 0.6867304592379189,
+  "precision_weighted": 0.6995324279541232,
+  "recall_weighted": 0.6867304592379189,
+  "f1_weighted": 0.682558561893122,
+  "f1_macro": 0.6830285024557575,
+  "roc_auc": 0.669297252992556,
+  "brier_score": 0.2357650507163849,
+  "classification_report": {
+    "No": {
+      "precision": 0.6462533812989766,
+      "recall": 0.8058559655040511,
+      "f1-score": 0.7172836449176675,
+      "support": 28757.0
+    },
+    "Yes": {
+      "precision": 0.7513694054776219,
+      "recall": 0.5708292451872653,
+      "f1-score": 0.6487733599938476,
+      "support": 29557.0
+    },
+    "accuracy": 0.6867304592379189,
+    "macro avg": {
+      "precision": 0.6988113933882992,
+      "recall": 0.6883426053456583,
+      "f1-score": 0.6830285024557575,
+      "support": 58314.0
+    },
+    "weighted avg": {
+      "precision": 0.6995324279541232,
+      "recall": 0.6867304592379189,
+      "f1-score": 0.682558561893122,
+      "support": 58314.0
+    }
+  },
+  "classes": [
+    "No",
+    "Yes"
+  ],
+  "confusion_matrix": [
+    [
+      23174,
+      5583
+    ],
+    [
+      12685,
+      16872
+    ]
+  ],
+  "training_rows": 231737,
+  "test_rows": 58314,
+  "source_rows": 292364,
+  "cleaned_rows": 290051,
+  "removed_rows": 2313,
+  "selected_model": "naive_bayes",
+  "cross_validation": {
+    "dummy": {
+      "f1_macro": 0.3347769961038864,
+      "balanced_accuracy": 0.5,
+      "roc_auc": 0.5,
+      "f1_macro_std": 0.0016102537034116988
+    },
+    "logistic_regression": {
+      "f1_macro": 0.6696993031738502,
+      "balanced_accuracy": 0.6723293712334876,
+      "roc_auc": 0.6912820664319527,
+      "f1_macro_std": 0.010561878532949905
+    },
+    "naive_bayes": {
+      "f1_macro": 0.6701563319900486,
+      "balanced_accuracy": 0.6730125599736857,
+      "roc_auc": 0.6912274509357507,
+      "f1_macro_std": 0.010025816428506064
+    },
+    "random_forest": {
+      "f1_macro": 0.6700498045288447,
+      "balanced_accuracy": 0.6723939511569766,
+      "roc_auc": 0.6998450413869497,
+      "f1_macro_std": 0.010748219959837315
+    },
+    "extra_trees": {
+      "f1_macro": 0.6701392673453269,
+      "balanced_accuracy": 0.672392670784493,
+      "roc_auc": 0.6998487015044507,
+      "f1_macro_std": 0.010813432404328015
+    }
+  },
+  "split_method": "Timestamp-grouped stratified holdout; 3-fold grouped CV on training only",
+  "group_overlap": 0,
+  "train_groups": 466,
+  "test_groups": 114,
+  "target_distribution": {
+    "Yes": 146184,
+    "No": 143867
+  },
+  "missing_values_by_feature": {
+    "Occupation": 0,
+    "self_employed": 5193,
+    "family_history": 0,
+    "Days_Indoors": 0,
+    "Growing_Stress": 0,
+    "Changes_Habits": 0,
+    "Mental_Health_History": 0,
+    "Mood_Swings": 0,
+    "Coping_Struggles": 0,
+    "Work_Interest": 0,
+    "Social_Weakness": 0
+  },
+  "trained_at": "2026-11-13T11:23:59.347550+00:00",
+  "limitations": "Timestamp is a proxy, not a verified respondent ID. No external or clinical validation. Probabilities are uncalibrated model scores."
+}

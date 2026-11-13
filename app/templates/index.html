@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mental Health Prediction System</title>
+  <link rel="stylesheet" href="/static/style.css">
+
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">✦</span><div><b>MindMetrics</b><small>Survey ML Studio</small></div></div>
+    <nav><a class="active" href="#overview">Overview</a><a href="#predict">New prediction</a><a href="#dataset">Dataset</a><a href="#model">Model performance</a></nav>
+    <div class="side-note"><b>Educational demo</b><p>Explores patterns in historical survey responses. Not a diagnostic or clinical tool.</p></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><p class="eyebrow">MACHINE LEARNING PROJECT</p><h1>Mental Health Prediction System</h1><p class="muted">Explore survey patterns and generate a prediction report.</p></div><a class="download-link" href="/dataset">↓ Download dataset</a></header>
+    <section id="overview" class="stats-grid">
+      <article class="stat-card"><span>Dataset records</span><strong id="rows">—</strong><small>Rows in source CSV</small></article>
+      <article class="stat-card"><span>Dataset features</span><strong id="cols">—</strong><small>Including target column</small></article>
+      <article class="stat-card"><span>Missing values</span><strong id="missing">—</strong><small>Across the source dataset</small></article>
+      <article class="stat-card"><span>Duplicate rows</span><strong id="duplicates">—</strong><small>Exact duplicate records</small></article>
+    </section>
+    <section id="predict" class="panel">
+      <div class="section-heading"><div><p class="eyebrow">INTERACTIVE PREDICTION</p><h2>Enter survey responses</h2><p class="muted">Complete the fields and generate an educational model estimate.</p></div><span class="pill">11 inputs</span></div>
+      <form id="prediction-form"><div id="fields" class="form-grid"><p>Loading form fields…</p></div>
+        <div class="form-actions"><button type="reset" class="button secondary">Reset form</button><button type="submit" id="submit" disabled class="button primary">Generate prediction <span>→</span></button></div>
+      </form>
+      <div id="error" class="error hidden"></div>
+      <div id="result" class="result hidden">
+        <div class="result-top"><div><p class="eyebrow">MODEL OUTPUT</p><h3>Prediction generated</h3></div><span id="result-label" class="prediction-tag">—</span></div>
+        <p class="muted">Predicted treatment survey response: Yes means the historical respondent reported seeking treatment; No means they reported not seeking it. This does not determine whether you need care. Reports are generated on request and are not stored on the server.</p>
+        <div class="probability-wrap"><div class="probability-label"><span>Predicted-class model probability</span><b id="confidence">—</b></div><div class="bar"><span id="confidence-bar"></span></div></div>
+        <div id="class-probs" class="class-probs"></div>
+        <button type="button" id="report-link" class="button primary report-button">Download PDF report</button>
+      </div>
+    </section>
+    <section id="dataset" class="panel">
+      <div class="section-heading"><div><p class="eyebrow">SOURCE DATA</p><h2>Dataset preview</h2><p class="muted">A preview of the original CSV included with this project.</p></div><a href="/dataset" class="text-link">Download full CSV ↗</a></div>
+      <div class="table-wrap"><table><thead id="table-head"></thead><tbody id="table-body"></tbody></table></div>
+      <small class="muted">Showing the first 8 rows. The downloadable CSV contains the complete dataset.</small>
+    </section>
+    <section id="model" class="panel">
+      <div class="section-heading"><div><p class="eyebrow">MODEL EVALUATION</p><h2>Held-out test performance</h2><p class="muted">Classification models compared using grouped cross-validation.</p></div></div>
+      <div class="metrics-grid" id="metrics"></div><p id="evaluation-details" class="muted"></p><div id="model-comparison"></div>
+      <p class="disclaimer">Model limitations: performance reflects this dataset and its collection process. Survey associations are not causal. The model excludes Timestamp, Gender, and Country; however, other input features may still encode social or demographic patterns. It has not been validated for clinical use.</p>
+    </section>
+    <footer>MindMetrics · Local educational ML project · FastAPI + Scikit-learn + Joblib</footer>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body></html>
+
