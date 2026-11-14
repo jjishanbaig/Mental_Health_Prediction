@@ -1,5 +1,7 @@
 ﻿import json
 from pathlib import Path
+import csv
+from io import StringIO
 import subprocess
 import sys
 import time
@@ -35,9 +37,9 @@ class ApplicationTests(unittest.TestCase):
         cls.server.wait(timeout=10)
 
     @staticmethod
-    def call(path, payload=None):
-        body = None if payload is None else json.dumps(payload).encode()
-        req = Request('http://127.0.0.1:18765'+path, data=body, headers={'Content-Type':'application/json'})
+    def call(path, payload=None, content_type='application/json'):
+        body = payload if isinstance(payload, bytes) else None if payload is None else json.dumps(payload).encode()
+        req = Request('http://127.0.0.1:18765'+path, data=body, headers={'Content-Type':content_type})
         try:
             response = urlopen(req, timeout=20)
         except HTTPError as exc:
@@ -99,6 +101,48 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(len(self.call('/api/data-preview?limit=1000')[1]['rows']),100)
         self.assertEqual(self.call('/api/data-preview?limit=abc')[0],422)
         self.assertEqual(self.call('/dataset')[0],200)
+
+    def test_batch_matches_single(self):
+        status,template,_=self.call('/api/batch-template')
+        self.assertEqual(status,200)
+        sample=list(csv.DictReader(StringIO(template.decode())))[0]
+        single=self.call('/api/predict',sample)[1]
+        status,content,headers=self.call('/api/predict-batch',template,'text/csv')
+        self.assertEqual(status,200)
+        result=list(csv.DictReader(StringIO(content.decode())))[0]
+        self.assertEqual(result['predicted_treatment'],single['prediction'])
+        self.assertAlmostEqual(float(result['predicted_probability']),single['confidence'])
+        self.assertEqual(headers['X-Prediction-Count'],'1')
+        self.assertEqual(headers['Cache-Control'],'no-store')
+
+    def test_batch_validation_and_limits(self):
+        template=self.call('/api/batch-template')[1]
+        self.assertEqual(self.call('/api/predict-batch',template)[0],415)
+        for content in [b'', b'wrong\nvalue\n', template.splitlines()[0]+b'\n', b'\xff']:
+            self.assertEqual(self.call('/api/predict-batch',content,'text/csv')[0],422)
+        lines=template.decode().splitlines()
+        invalid=(lines[0]+'\nINVALID,'+lines[1].split(',',1)[1]+'\n').encode()
+        status,error,_=self.call('/api/predict-batch',invalid,'text/csv')
+        self.assertEqual(status,422)
+        self.assertIn('Row 2',error['detail'])
+        too_many=(lines[0]+'\n'+(lines[1]+'\n')*1001).encode()
+        self.assertEqual(self.call('/api/predict-batch',too_many,'text/csv')[0],413)
+        self.assertEqual(self.call('/api/predict-batch',b'x'*(1024*1024+1),'text/csv')[0],413)
+
+    def test_batch_blanks_and_multiple_rows(self):
+        keys=list(self.options)
+        output=StringIO(newline='')
+        writer=csv.writer(output)
+        writer.writerow(keys)
+        writer.writerow(['']*len(keys))
+        writer.writerow([self.payload[k] for k in keys])
+        status,content,_=self.call('/api/predict-batch',output.getvalue().encode('utf-8-sig'),'text/csv; charset=utf-8')
+        self.assertEqual(status,200)
+        results=list(csv.DictReader(StringIO(content.decode())))
+        self.assertEqual(len(results),2)
+        self.assertEqual(results[0]['Occupation'],'Not specified')
+        single=self.call('/api/predict',{k:'Not specified' for k in keys})[1]
+        self.assertAlmostEqual(float(results[0]['predicted_probability']),single['confidence'])
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

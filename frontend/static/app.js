@@ -24,11 +24,20 @@ async function loadForm(){
     values.forEach(v=>select.add(new Option(v,v)));wrap.append(label,select);fields.append(wrap);
   }
   $('submit').disabled=false;
+  $('sample').disabled=false;
 }
 async function loadStats(){
   const stats=await (await request('/api/stats')).json();
   for(const [id,key] of [['rows','rows'],['cols','columns'],['missing','missing_values'],['duplicates','duplicate_rows']]) $(id).textContent=Number(stats[key]).toLocaleString();
   const m=stats.metrics;
+  drawBars('comparison-chart',Object.entries(m.cross_validation).map(([name,scores])=>[name.replaceAll('_',' '),scores.f1_macro]));
+  const total=Object.values(stats.target_distribution).reduce((sum,value)=>sum+value,0);
+  drawBars('distribution-chart',Object.entries(stats.target_distribution).map(([name,count])=>[`${name} (${count.toLocaleString()})`,count/total]));
+  const table=document.createElement('table'), caption=document.createElement('caption');caption.textContent='Rows: actual response. Columns: predicted response.';table.append(caption);
+  const header=document.createElement('tr');
+  ['Actual / predicted',...m.classes].forEach(name=>{const th=document.createElement('th');th.scope='col';th.textContent=name;header.append(th);});table.append(header);
+  const maximum=Math.max(...m.confusion_matrix.flat());
+  m.confusion_matrix.forEach((values,index)=>{const tr=document.createElement('tr'), th=document.createElement('th');th.scope='row';th.textContent=m.classes[index];tr.append(th);values.forEach(value=>{const td=document.createElement('td');td.textContent=value.toLocaleString();td.style.backgroundColor=`rgba(8,127,140,${.08+.22*value/maximum})`;tr.append(td);});table.append(tr);});$('confusion-chart').replaceChildren(table);
   const entries=[['Accuracy',m.accuracy],['Macro F1',m.f1_macro],['ROC AUC',m.roc_auc],['Weighted F1',m.f1_weighted]];
   $('metrics').replaceChildren();
   for(const [name,value] of entries){const box=document.createElement('div');box.className='metric';const title=document.createElement('span'), score=document.createElement('b');title.textContent=name;score.textContent=(value*100).toFixed(1)+'%';box.append(title,score);$('metrics').append(box);}
@@ -69,8 +78,30 @@ $('report-link').addEventListener('click',async event=>{
     reportUrl=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=reportUrl;link.download='mental_health_survey_report.pdf';link.click();
   }catch(error){showError(error.message);}finally{button.disabled=false;}
 });
-form.addEventListener('reset',()=>{lastPayload=null;resultBox.classList.add('hidden');errorBox.classList.add('hidden');if(reportUrl){URL.revokeObjectURL(reportUrl);reportUrl=null;}});
+form.addEventListener('reset',()=>{lastPayload=null;$('sample-status').textContent='';resultBox.classList.add('hidden');errorBox.classList.add('hidden');if(reportUrl){URL.revokeObjectURL(reportUrl);reportUrl=null;}});
 form.addEventListener('change',()=>{lastPayload=null;resultBox.classList.add('hidden');});
+$('sample').addEventListener('click',()=>{
+  form.reset();
+  fields.querySelectorAll('select').forEach(select=>{select.value=select.options[1].value;});
+  $('sample-status').textContent='Synthetic example filled. You can edit the responses before generating a prediction.';
+});
+function drawBars(id,entries){
+  const container=$(id);container.replaceChildren();
+  entries.forEach(([name,value])=>{const row=document.createElement('div');row.className='chart-row';const label=document.createElement('span');label.textContent=name;const meter=document.createElement('meter');meter.min=0;meter.max=1;meter.value=value;meter.setAttribute('aria-label',name);const score=document.createElement('b');score.textContent=(value*100).toFixed(1)+'%';row.append(label,meter,score);container.append(row);});
+}
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob), link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+$('batch-form').addEventListener('submit',async event=>{
+  event.preventDefault();const button=$('batch-submit'), status=$('batch-status'), file=$('batch-file').files[0];
+  if(!file)return;
+  if(file.size>1024*1024){status.textContent='CSV must be no larger than 1 MB.';return;}
+  button.disabled=true;status.textContent='Validating survey rows and generating predictions...';
+  try{
+    const response=await request('/api/predict-batch',{method:'POST',headers:{'Content-Type':'text/csv'},body:file});
+    downloadBlob(await response.blob(),'survey_predictions.csv');status.textContent=`Downloaded predictions for ${response.headers.get('X-Prediction-Count')} survey rows.`;
+  }catch(error){status.textContent=error.message;}finally{button.disabled=false;}
+});
 loadForm().catch(error=>{fields.textContent='Could not load form options.';showError(error.message);});
 loadStats().catch(error=>{$('metrics').textContent='Statistics unavailable: '+error.message;});
 loadPreview().catch(error=>{$('table-body').textContent='Preview unavailable: '+error.message;});

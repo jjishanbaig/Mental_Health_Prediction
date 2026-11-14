@@ -43,6 +43,13 @@ This is a bounded comparison of fixed configurations, not an exhaustive algorith
 
 ## API and data handling
 
+### Dashboard and batch features
+
+- **Fill sample responses** populates the form with synthetic allowed-category values, which you can edit before submitting.
+- Dashboard charts show CV macro F1, source treatment-response distribution, and the held-out confusion matrix. Labels and values remain available as text.
+- Download the sample CSV from the batch panel, enter up to 1,000 survey rows, then upload it to download predictions and class probabilities. UTF-8 files only; maximum 1 MB. Use exactly the 11 template columns. Blank cells use training-fitted imputation; invalid categories or malformed rows reject the entire upload with row-specific errors. CSV files and results are processed in memory and are not stored.
+- `GET /api/batch-template` downloads the template; `POST /api/predict-batch` accepts raw CSV with `Content-Type: text/csv` and returns a CSV result. The scores describe treatment-seeking responses and have no clinical interpretation.
+
 - `GET /health`, `/api/options`, `/api/stats`, `/api/data-preview?limit=8`
 - `GET /dataset` downloads the included source CSV.
 - `POST /api/predict` accepts exactly the 11 required category strings and returns class scores.

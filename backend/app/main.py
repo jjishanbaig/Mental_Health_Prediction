@@ -1,6 +1,7 @@
 ﻿from pathlib import Path
 from uuid import uuid4
-from io import BytesIO
+from io import BytesIO, StringIO
+import csv
 from fastapi.responses import Response
 from pydantic import ConfigDict, field_validator
 import numpy as np
@@ -16,7 +17,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -171,6 +172,64 @@ def report(payload: PredictionInput):
     return Response(content, media_type="application/pdf", headers={
         "Content-Disposition":"attachment; filename=mental_health_survey_report.pdf",
         "Cache-Control":"no-store"})
+
+
+@app.get("/api/batch-template")
+def batch_template():
+    output = StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(FEATURES)
+    # Synthetic example, assembled from allowed categories rather than a person's record.
+    writer.writerow([artifact["options"][key][0] for key in FEATURES])
+    return Response(output.getvalue(), media_type="text/csv", headers={
+        "Content-Disposition": "attachment; filename=survey_template.csv"})
+
+
+@app.post("/api/predict-batch")
+async def predict_batch(request: Request):
+    if request.headers.get("content-type", "").split(";")[0].strip() != "text/csv":
+        raise HTTPException(415, "Send the CSV file with Content-Type: text/csv")
+    content = bytearray()
+    async for chunk in request.stream():
+        content.extend(chunk)
+        if len(content) > 1024 * 1024:
+            raise HTTPException(413, "CSV must be no larger than 1 MB")
+    try:
+        reader = csv.DictReader(StringIO(content.decode("utf-8-sig"), newline=""), strict=True)
+        if not reader.fieldnames or len(reader.fieldnames) != len(FEATURES) or set(reader.fieldnames) != set(FEATURES):
+            raise HTTPException(422, "CSV headers must match the 11 template columns exactly")
+        rows, errors = [], []
+        for number, row in enumerate(reader, start=2):
+            if number > 1001:
+                raise HTTPException(413, "CSV supports at most 1,000 survey rows")
+            if None in row or any(value is None for value in row.values()):
+                errors.append(f"Row {number}: wrong number of columns")
+                continue
+            try:
+                cleaned = {key: value.strip() or "Not specified" for key, value in row.items()}
+                rows.append(PredictionInput(**cleaned).model_dump())
+            except ValidationError as exc:
+                fields = ", ".join(str(error["loc"][0]) for error in exc.errors())
+                errors.append(f"Row {number}: invalid response in {fields}")
+        if errors:
+            raise HTTPException(422, "; ".join(errors[:20]))
+        if not rows:
+            raise HTTPException(422, "CSV must contain at least one survey row")
+    except (UnicodeDecodeError, csv.Error):
+        raise HTTPException(422, "Upload a valid UTF-8 CSV file")
+    frame = pd.DataFrame(rows, columns=FEATURES).replace("Not specified", np.nan)
+    probabilities = model.predict_proba(frame)
+    classes = model.classes_.tolist()
+    output = StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(["row_number", *FEATURES, "predicted_treatment", "predicted_probability", *[f"probability_{c}" for c in classes]])
+    for number, (row, scores) in enumerate(zip(rows, probabilities), start=2):
+        selected = int(np.argmax(scores))
+        writer.writerow([number, *[row[k] for k in FEATURES], classes[selected],
+                         float(scores[selected]), *[float(score) for score in scores]])
+    return Response(output.getvalue(), media_type="text/csv", headers={
+        "Content-Disposition": "attachment; filename=survey_predictions.csv",
+        "X-Prediction-Count": str(len(rows))})
 
 @app.middleware("http")
 async def privacy_headers(request, call_next):
