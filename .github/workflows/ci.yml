@@ -111,6 +111,10 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
 
+      - name: Check EC2 disk space before upload
+        shell: bash
+        run: ssh mental-health-ec2 'bash -s' < deploy/check-space.sh
+
       - name: Upload built image and deploy
         shell: bash
         run: |

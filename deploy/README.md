@@ -44,3 +44,7 @@ sudo docker logs --tail 100 mental-health
 sudo ss -ltnp | grep ':80 '
 curl -f http://127.0.0.1/health
 ```
+
+### Disk-space failures
+
+`no space left on device` means the instance filesystem is full. Before uploading an image, CI now requires at least 6 GiB free on the home, Docker and containerd filesystems. A preflight container forces image extraction before stopping the current app. Inspect `df -h` and `sudo docker system df`. Reclaim unused build cache with `sudo docker builder prune` after reviewing its confirmation, or expand the EBS volume and filesystem. Do not prune Docker volumes: the knowledge base is stored there. If an earlier failed deployment left the old container stopped, restore space first, then run `sudo docker start mental-health`.

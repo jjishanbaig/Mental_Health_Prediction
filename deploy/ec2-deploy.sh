@@ -16,6 +16,10 @@ echo 'Loading prebuilt image; dependency installation runs on GitHub, not EC2.'
 sudo -n docker load --input "$image_archive"
 sudo -n docker image inspect "mental-health:$revision" > /dev/null
 rm -f "$image_archive"
+# docker load can register image metadata even when lazy layer extraction fails.
+# Force extraction and validate the runtime while the old app is still running.
+sudo -n docker run --rm --entrypoint python "mental-health:$revision" \
+  -c "from backend.app.rag_service import guide_search_answer; assert guide_search_answer('What is stress?')['sources']"
 
 name=mental-health
 backup=mental-health-previous
