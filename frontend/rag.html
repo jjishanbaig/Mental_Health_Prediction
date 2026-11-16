@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Mental Wellness Knowledge Assistant</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            margin: 0;
+            padding: 30px;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .panel {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 15px #0000000d;
+        }
+
+        input, button {
+            padding: 12px;
+            border-radius: 7px;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            background: #087f8c;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #question {
+            width: 72%;
+        }
+
+        .message {
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        .user {
+            background: #e0f2fe;
+        }
+
+        .assistant {
+            background: #ecfdf5;
+        }
+
+        .source {
+            font-size: 13px;
+            color: #526071;
+            margin-top: 8px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+        body.embedded {padding:18px;background:#f0f7f7}
+        body.embedded h1 {font-size:22px}
+        body.embedded .standalone-only {display:none}
+        body.embedded {padding:0;height:100dvh;box-sizing:border-box}
+        body.embedded .container {height:100%;display:flex;flex-direction:column;padding:16px;box-sizing:border-box}
+        body.embedded .chat-panel {flex:1;min-height:0;display:flex;flex-direction:column;margin:0;padding:12px;box-shadow:none}
+        body.embedded .chat-panel h2 {display:none}
+        body.embedded #chat-box {flex:1;min-height:120px;overflow-y:auto;padding-right:4px;overflow-wrap:anywhere}
+        .chat-composer {display:flex;gap:8px;align-items:center}
+        .chat-composer #question {flex:1;min-width:0;width:auto;box-sizing:border-box}
+        .chat-composer button {flex-shrink:0}
+        .assistant-note {font-size:12px;line-height:1.5;color:#526071}
+        .chat-welcome{box-sizing:border-box;max-width:380px;margin:auto;padding:36px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+        .chat-welcome[hidden]{display:none}
+        body.embedded #chat-box:has(.chat-welcome:not([hidden])){display:flex;flex-direction:column}
+        .welcome-emblem{width:104px;height:104px;border-radius:32px;background:linear-gradient(145deg,#e5f6f0,#d8edf2);display:grid;place-items:center;margin-bottom:8px;box-shadow:0 12px 32px #087f8c12}
+        .welcome-emblem svg{width:70px;height:70px}
+        .welcome-brand{font-size:11px;font-weight:700;letter-spacing:2px;color:#087f8c;text-transform:uppercase}
+        .chat-welcome h3{margin:0;font-size:25px;line-height:1.25;letter-spacing:-.5px;color:#153344;max-width:300px}
+        .chat-welcome p{margin:0;font-size:14px;line-height:1.6;color:#536b76;max-width:310px}
+        .question-suggestions{display:grid;gap:9px;width:100%;margin-top:12px}
+        .question-suggestions button{background:#f4faf9;border:1px solid #dce8e8;color:#234553;text-align:left;font-size:13px;line-height:1.5;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+        .question-suggestions button:hover{background:#e5f3ef;border-color:#87bab8}
+        .question-suggestions button:focus-visible{outline:2px solid #087f8c;outline-offset:3px}
+        .question-suggestions span{color:#087f8c;font-size:18px}
+        .chat-composer input:focus{outline:2px solid #087f8c;outline-offset:2px}
+        @media(max-width:600px){body{padding:14px}#question{width:100%;box-sizing:border-box;margin-bottom:10px}.panel{padding:16px}input[type=file]{max-width:100%;box-sizing:border-box}}
+    </style>
+</head>
+
+<body class="{{ 'embedded' if embedded else '' }}">
+<div class="container">
+
+    <h1 class="standalone-only">Mental Wellness AI Assistant</h1>
+    <p id="rag-status" role="status" aria-live="polite">Checking assistant configuration...</p>
+
+    <p class="standalone-only">
+        Ask questions about stress, coping and mental wellbeing using the shared
+        educational guide. You do not need to upload a file.
+    </p>
+
+    <div class="panel standalone-only">
+        <h2>Upload Additional Documents (optional)</h2>
+
+        <input
+            type="file"
+            id="document"
+            accept=".pdf,.docx,.txt"
+        >
+
+        <button onclick="uploadDocument()">
+            Upload Document
+        </button>
+
+        <p id="upload-status"></p>
+    </div>
+
+    <div class="panel standalone-only">
+        <h2>Knowledge Base</h2>
+
+        <button onclick="loadDocuments()">
+            Refresh Documents
+        </button>
+
+        <ul id="documents"></ul>
+    </div>
+
+    <div class="panel chat-panel">
+        <h2>Ask AI Assistant</h2>
+
+        <div id="chat-box" role="log" aria-live="polite" aria-label="Conversation">
+          <div id="chat-welcome" class="chat-welcome">
+            <div class="welcome-emblem" aria-hidden="true">
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17 18h40a10 10 0 0 1 10 10v24a10 10 0 0 1-10 10H35L19 71V61A10 10 0 0 1 9 51V28a10 10 0 0 1 8-10Z" fill="#153344"/>
+                <path d="M29 48c-5-15 3-25 22-25 1 18-7 28-22 25Z" fill="#80d5bd"/>
+                <path d="m27 53 17-21" stroke="#def5eb" stroke-width="3" stroke-linecap="round"/>
+                <path d="m64 5 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" fill="#087f8c"/>
+              </svg>
+            </div>
+            <div class="welcome-brand">MindMetrics AI</div>
+            <h3>A little clarity.<br>One question away.</h3>
+            <p>Explore stress, everyday coping and mental wellbeing with answers from your shared guide.</p>
+            <div class="question-suggestions" aria-label="Suggested questions">
+              <button type="button" data-question="What are common signs of stress?">What are common signs of stress?<span aria-hidden="true">↗</span></button>
+              <button type="button" data-question="How can I calm myself when I feel overwhelmed?">How can I feel calmer when overwhelmed?<span aria-hidden="true">↗</span></button>
+              <button type="button" data-question="How can I sleep better when I am stressed?">How can I sleep better during stress?<span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-composer"><input
+            id="question"
+            type="text"
+            placeholder="Ask a question..."
+        >
+
+        <button onclick="askQuestion()">
+            Send
+        </button></div>
+
+        <p id="chat-status"></p>
+    </div>
+
+    <p class="assistant-note">
+        Educational information only. This assistant
+        does not diagnose or replace professional care.
+    </p>
+
+    <a id="back-dashboard" href="/">Back to Dashboard</a>
+
+</div>
+
+<script src="/static/rag.js"></script>
+
+</body>
+</html>

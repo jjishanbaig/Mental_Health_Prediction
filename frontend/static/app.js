@@ -102,6 +102,20 @@ $('batch-form').addEventListener('submit',async event=>{
     downloadBlob(await response.blob(),'survey_predictions.csv');status.textContent=`Downloaded predictions for ${response.headers.get('X-Prediction-Count')} survey rows.`;
   }catch(error){status.textContent=error.message;}finally{button.disabled=false;}
 });
+const aiDialog=$('ai-dialog'), aiLauncher=$('ai-launcher'), aiFrame=$('ai-frame');
+aiLauncher.addEventListener('click',()=>{
+  if(!aiFrame.getAttribute('src'))aiFrame.setAttribute('src',aiFrame.dataset.src);
+  aiDialog.showModal();document.body.classList.add('ai-open');
+});
+$('ai-close').addEventListener('click',()=>aiDialog.close());
+aiDialog.addEventListener('click',event=>{
+  const bounds=aiDialog.getBoundingClientRect();
+  if(event.target===aiDialog && (event.clientX<bounds.left || event.clientX>bounds.right || event.clientY<bounds.top || event.clientY>bounds.bottom))aiDialog.close();
+});
+aiDialog.addEventListener('close',()=>{document.body.classList.remove('ai-open');aiLauncher.focus();});
+window.addEventListener('message',event=>{
+  if(event.origin===window.location.origin && event.source===aiFrame.contentWindow && event.data?.type==='close-knowledge-assistant')aiDialog.close();
+});
 loadForm().catch(error=>{fields.textContent='Could not load form options.';showError(error.message);});
 loadStats().catch(error=>{$('metrics').textContent='Statistics unavailable: '+error.message;});
 loadPreview().catch(error=>{$('table-body').textContent='Preview unavailable: '+error.message;});

@@ -6,6 +6,7 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN python -m pip install -r backend/requirements.txt && python -m pip check
 COPY backend/ backend/
 COPY frontend/ frontend/
+RUN mkdir -p /app/backend/knowledge_base && chown -R 10001:10001 /app/backend/knowledge_base
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=4 \

@@ -242,3 +242,14 @@ async def privacy_headers(request, call_next):
 def health():
     return {"status": "ok", "model_loaded": True}
 
+
+from .rag_routes import router as rag_router
+
+app.include_router(rag_router)
+@app.get("/rag", response_class=HTMLResponse)
+async def rag_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="rag.html",
+        context={"embedded": request.query_params.get("embedded") == "1"}
+    )

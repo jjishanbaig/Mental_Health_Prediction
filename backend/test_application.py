@@ -3,6 +3,7 @@ from pathlib import Path
 import csv
 from io import StringIO
 import subprocess
+import os
 import sys
 import time
 import unittest
@@ -16,8 +17,8 @@ ROOT = Path(__file__).resolve().parent
 class ApplicationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'backend.app.main:app', '--host', '127.0.0.1', '--port', '18765'], cwd=ROOT.parent, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(100):
+        cls.server = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'backend.app.main:app', '--host', '127.0.0.1', '--port', '18765'], cwd=ROOT.parent, env={**os.environ, 'GEMINI_API_KEY':''}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(600):
             try:
                 with urlopen('http://127.0.0.1:18765/health', timeout=1):
                     break
@@ -143,6 +144,80 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(results[0]['Occupation'],'Not specified')
         single=self.call('/api/predict',{k:'Not specified' for k in keys})[1]
         self.assertAlmostEqual(float(results[0]['predicted_probability']),single['confidence'])
+
+    def test_rag_page_and_configuration(self):
+        status,page,_=self.call('/rag')
+        self.assertEqual(status,200)
+        self.assertIn(b'Mental Wellness AI Assistant',page)
+        self.assertIn(b'<body class="">',page)
+        embedded_status,embedded_page,_=self.call('/rag?embedded=1')
+        self.assertEqual(embedded_status,200)
+        self.assertIn(b'<body class="embedded">',embedded_page)
+        self.assertEqual(self.call('/static/rag.js')[0],200)
+        status,configuration,_=self.call('/api/rag/status')
+        self.assertEqual(status,200)
+        self.assertIn('configured',configuration)
+        if not configuration['configured']:
+            response=self.call('/api/rag/chat',{'question':'What is stress?'})
+            self.assertEqual(response[0],200)
+            self.assertEqual(response[1]['mode'],'guide_search')
+            self.assertEqual(response[1]['sources'][0]['entry_id'],'KB-001')
+
+    def test_rag_empty_context_without_api_call(self):
+        from unittest.mock import patch, MagicMock
+        from backend.app import rag_service
+        empty=MagicMock()
+        empty.count.return_value=0
+        with patch.object(rag_service,'ensure_shared_knowledge'), patch.object(rag_service,'get_collection',return_value=empty), patch.object(rag_service,'generate_embeddings') as embeddings:
+            result=rag_service.gemini_answer_question('What is stress?')
+            self.assertEqual(result['sources'],[])
+            embeddings.assert_not_called()
+
+    def test_shared_pdf_indexed_once(self):
+        from unittest.mock import patch, MagicMock
+        from backend.app import rag_service
+        collection=MagicMock()
+        collection.get.side_effect=[{'ids':[]},{'ids':['already-indexed']}]
+        with patch.object(rag_service,'API_KEY','test-key'), patch.object(rag_service,'get_collection',return_value=collection), patch.object(rag_service,'generate_embeddings',side_effect=lambda texts,task:[[0.1,0.2] for _ in texts]) as embeddings, patch.object(Path,'write_bytes'):
+            self.assertTrue(rag_service.ensure_shared_knowledge())
+            self.assertTrue(rag_service.ensure_shared_knowledge())
+            embeddings.assert_called_once()
+            collection.add.assert_called_once()
+            inserted=collection.add.call_args.kwargs
+            self.assertEqual(len(inserted['documents']),24)
+            self.assertEqual(inserted['metadatas'][0]['entry_id'],'KB-001')
+            self.assertTrue(all(2<=m['page']<=7 for m in inserted['metadatas']))
+            self.assertTrue(all(m['bundled'] for m in inserted['metadatas']))
+
+    def test_shared_pdf_cannot_be_deleted(self):
+        from unittest.mock import patch, MagicMock
+        from backend.app import rag_service
+        collection=MagicMock()
+        collection.get.return_value={'ids':['shared'], 'metadatas':[{'bundled':True}]}
+        with patch.object(rag_service,'get_collection',return_value=collection):
+            with self.assertRaises(ValueError):
+                rag_service.delete_document('shared')
+            collection.delete.assert_not_called()
+
+    def test_local_guide_handles_typo_and_unrelated_question(self):
+        from backend.app import rag_service
+        result=rag_service.guide_search_answer('what is strss')
+        self.assertEqual(result['mode'],'guide_search')
+        self.assertEqual(result['sources'][0]['entry_id'],'KB-001')
+        self.assertIn('not an AI-generated answer',result['answer'])
+        self.assertEqual(rag_service.guide_search_answer('Who won the football world cup?')['sources'],[])
+
+    def test_provider_failure_falls_back_and_pauses_retries(self):
+        from unittest.mock import patch
+        import httpx
+        from backend.app import rag_service
+        with patch.object(rag_service,'API_KEY','test'), patch.object(rag_service,'_gemini_retry_at',0), patch.dict(os.environ,{'RAG_MODE':'auto'}), patch.object(rag_service,'gemini_answer_question',side_effect=httpx.ReadTimeout('timeout')) as cloud:
+            first=rag_service.answer_question('What is stress?')
+            second=rag_service.answer_question('How can I sleep better?')
+            self.assertEqual(first['mode'],'guide_search')
+            self.assertEqual(second['mode'],'guide_search')
+            self.assertTrue(first['sources'])
+            cloud.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

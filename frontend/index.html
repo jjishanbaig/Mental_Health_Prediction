@@ -10,7 +10,7 @@
 <div class="shell">
   <aside class="sidebar">
     <div class="brand"><span class="brand-icon">✦</span><div><b>MindMetrics</b><small>Survey ML Studio</small></div></div>
-    <nav><a class="active" href="#overview">Overview</a><a href="#predict">New prediction</a><a href="#batch">CSV predictions</a><a href="#dataset">Dataset</a><a href="#model">Model performance</a></nav>
+    <nav><a class="active" href="#overview">Overview</a><a href="#predict">New prediction</a><a href="#batch">CSV predictions</a><a href="#dataset">Dataset</a><a href="#model">Model performance</a><a href="/rag">Knowledge Assistant</a></nav>
     <div class="side-note"><b>Educational demo</b><p>Explores patterns in historical survey responses. Not a diagnostic or clinical tool.</p></div>
   </aside>
   <main class="main">
@@ -56,6 +56,11 @@
     <footer>MindMetrics · Local educational ML project · FastAPI + Scikit-learn + Joblib</footer>
   </main>
 </div>
+<button type="button" id="ai-launcher" class="ai-launcher" aria-label="Open Knowledge Assistant" aria-haspopup="dialog" aria-controls="ai-dialog"><span aria-hidden="true">✦</span> AI</button>
+<dialog id="ai-dialog" class="ai-dialog" aria-labelledby="ai-dialog-title">
+  <div class="ai-dialog-header"><div><h2 id="ai-dialog-title">AI Assistant</h2><small>Ask about stress and mental wellbeing</small></div><button type="button" id="ai-close" class="ai-close" aria-label="Close Knowledge Assistant" autofocus>×</button></div>
+  <iframe id="ai-frame" title="Mental wellness Knowledge Assistant" data-src="/rag?embedded=1"></iframe>
+</dialog>
 <script src="/static/app.js"></script>
 </body></html>
 

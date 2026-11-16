@@ -6,3 +6,6 @@
 **/*.pem
 **/reports
 release.tar.gz
+**/.env
+**/.env.*
+**/knowledge_base

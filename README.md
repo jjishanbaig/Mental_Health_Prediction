@@ -43,6 +43,16 @@ This is a bounded comparison of fixed configurations, not an exhaustive algorith
 
 ## API and data handling
 
+### Knowledge Assistant
+
+Gemini timeouts, API errors, and missing API keys fall back to local TF-IDF search of the bundled guide. These responses are explicitly labelled **Guide search mode** and quote a matching passage with a page/entry citation; they are not generated answers. Out-of-scope questions return no passage. After a provider error, cloud calls pause for 60 seconds. Set `RAG_MODE=guide_search` in the backend environment to use this mode immediately without provider calls. Restart after changing environment variables.
+
+Use the floating **AI** button on the dashboard to open the assistant in a panel along the right edge. The panel fills the screen height and uses the available width on small screens. Close it with the **×** button, Escape, or a click outside the panel. Closing and reopening preserves the current chat while the dashboard remains open. The standalone `/rag` page remains available.
+
+The supplied eight-page `Stress_and_Mental_Health_RAG_Knowledge_Base.pdf` is bundled in `backend/knowledge_sources/`. Once Gemini is configured, opening `/rag` or asking a question indexes its 24 Q&A entries automatically. A content/model hash prevents re-indexing unchanged files across restarts. Answers can cite the PDF page and KB entry. The introductory setup page and source directory are excluded from answer retrieval. Visitors can use the shared guide without uploading files, and it cannot be deleted from the public document list. The source is supplied educational material, not independently clinically validated content.
+
+Click **Knowledge Assistant** in the sidebar, or visit `/rag` directly. The page is separate from the dashboard. Install `backend/requirements.txt`, copy `backend/.env.example` to `backend/.env`, supply `GEMINI_API_KEY`, and restart the backend. Without a key the page remains usable through labelled local PDF passages. For EC2, use the server-side environment file described in `deploy/README.md`; a local `.env` is deliberately excluded from Docker images. Document uploads and retrieved context are sent to Gemini for embedding and generation. Use educational demo documents, not personal records.
+
 ### Dashboard and batch features
 
 - **Fill sample responses** populates the form with synthetic allowed-category values, which you can edit before submitting.

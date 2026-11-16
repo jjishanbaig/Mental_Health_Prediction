@@ -34,7 +34,13 @@ rollback() {
   fi
 }
 trap rollback ERR
+rag_environment=()
+if [ -f "$HOME/mental-health/rag.env" ]; then
+  rag_environment=(--env-file "$HOME/mental-health/rag.env")
+fi
 sudo -n docker run --detach --name "$name" --restart unless-stopped \
+  "${rag_environment[@]}" \
+  --mount type=volume,source=mental-health-knowledge,target=/app/backend/knowledge_base \
   --publish 80:8000 --log-opt max-size=10m --log-opt max-file=3 "mental-health:$revision"
 healthy=false
 for attempt in $(seq 1 30); do

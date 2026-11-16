@@ -32,6 +32,10 @@ Open `http://3.108.63.240` and `http://3.108.63.240/health` after the deployment
 
 The `mental-health` container restarts after host reboots. Code is stored in `~/mental-health/releases/<commit>` outside the runner workspace. A failed startup restores the previous container. Historical release directories and Docker images are retained for inspection; monitor server disk use.
 
+### RAG configuration
+
+The Knowledge Assistant page is `/rag`. To enable Gemini requests, create `~/mental-health/rag.env` on EC2 with `GEMINI_API_KEY=your_key` (and optional `GEMINI_CHAT_MODEL` / `GEMINI_EMBEDDING_MODEL` overrides), restrict it with `chmod 600 ~/mental-health/rag.env`, then redeploy. The deployment passes this file into Docker without putting the key in Git. Documents are kept in the `mental-health-knowledge` Docker volume across redeployments. This is a shared demo knowledge base: upload educational, non-personal documents only.
+
 Inspect failures on EC2:
 
 ```bash

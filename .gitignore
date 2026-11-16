@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 reports/
 *.pem
+.env
+.env.*
+!.env.example
+**/knowledge_base/
