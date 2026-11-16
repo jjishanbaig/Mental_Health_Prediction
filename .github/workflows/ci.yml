@@ -61,7 +61,7 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_USER: ${{ secrets.EC2_USER }}
@@ -72,6 +72,14 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Build application image on GitHub
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag "mental-health:$GITHUB_SHA" .
+          docker run --rm --entrypoint python "mental-health:$GITHUB_SHA" -c "from backend.app.rag_service import guide_search_answer; result=guide_search_answer('What is stress?'); assert result['sources'], 'Bundled RAG guide is missing from the image'"
+          docker save "mental-health:$GITHUB_SHA" | gzip -1 > image.tar.gz
 
       - name: Configure SSH
         shell: bash
@@ -103,12 +111,13 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
 
-      - name: Upload tested source and deploy
+      - name: Upload built image and deploy
         shell: bash
         run: |
           set -euo pipefail
           git archive --format=tar.gz --output=release.tar.gz HEAD
           scp release.tar.gz "mental-health-ec2:mental-health-${GITHUB_SHA}.tar.gz"
+          scp image.tar.gz "mental-health-ec2:mental-health-image-${GITHUB_SHA}.tar.gz"
           ssh mental-health-ec2 "bash -s -- '$GITHUB_SHA'" < deploy/ec2-deploy.sh
 
       - name: Remove temporary SSH credentials

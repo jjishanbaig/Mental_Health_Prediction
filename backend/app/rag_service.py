@@ -15,7 +15,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from threading import Lock
 from functools import lru_cache
 
-import chromadb
 import pymupdf as fitz
 from docx import Document
 from dotenv import load_dotenv
@@ -49,6 +48,7 @@ EMBEDDING_MODEL = os.getenv(
 
 @lru_cache(maxsize=1)
 def get_collection():
+    import chromadb
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     CHROMA_DIR.mkdir(parents=True, exist_ok=True)
     client = chromadb.PersistentClient(path=str(CHROMA_DIR))

@@ -10,7 +10,12 @@ release="$HOME/mental-health/releases/$revision"
 mkdir -p "$release"
 tar -xzf "$HOME/mental-health-$revision.tar.gz" -C "$release"
 cd "$release"
-sudo -n docker build --tag "mental-health:$revision" .
+image_archive="$HOME/mental-health-image-$revision.tar.gz"
+test -f "$image_archive" || { echo 'Prebuilt image archive is missing. Run the updated CI/CD workflow.'; exit 1; }
+echo 'Loading prebuilt image; dependency installation runs on GitHub, not EC2.'
+sudo -n docker load --input "$image_archive"
+sudo -n docker image inspect "mental-health:$revision" > /dev/null
+rm -f "$image_archive"
 
 name=mental-health
 backup=mental-health-previous

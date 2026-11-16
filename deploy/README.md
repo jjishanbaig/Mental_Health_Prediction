@@ -1,6 +1,6 @@
 # EC2 deployment
 
-The workflow tests on GitHub-hosted Windows and Ubuntu runners, then deploys the exact tested commit over SSH. It uses your existing `EC2_HOST`, `EC2_USER`, and `EC2_SSH_KEY` repository secrets. The self-hosted runner is not needed for this deployment method.
+The workflow tests on GitHub-hosted Windows and Ubuntu runners, builds and checks the Docker image on GitHub, then transfers the compressed image over SSH. EC2 loads the finished image instead of installing dependencies or building it locally. This avoids memory-heavy builds on small EC2 instances. It uses your existing `EC2_HOST`, `EC2_USER`, and `EC2_SSH_KEY` repository secrets. The self-hosted runner is not needed for this deployment method.
 
 ## One-time server setup (Ubuntu EC2)
 
